@@ -63,6 +63,12 @@ foreach my $file (readdir $dh) {
     next if $file =~ /^\./;
     if (-f "$todo/$file") {
         debug("Preparing to transfer $file");
+        my $size = -s "$todo/$file";
+        if ($size == 0) {
+            debug("Not submitting 0-byte file $file");
+            rename("$todo/$file", "$failure/$file");
+            next;
+        }
         open (my $source_fh, '<', "$todo/$file")
             or die "$0: can't open file $todo/$file for input: $!";
             binmode $source_fh, ":encoding(UTF-8)";
