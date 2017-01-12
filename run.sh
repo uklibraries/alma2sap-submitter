@@ -25,6 +25,10 @@ case $key in
     BASELOG="$2"
     shift
     ;;
+    -r|--report)
+    REPORT="$2"
+    shift
+    ;;
     *)
     ;;
 esac
@@ -43,6 +47,6 @@ function log() {
 }
 
 log "started"
-log "running perl \"$ROOT/service/submitter.pl\" --root \"$ROOT\" --destination \"$DESTINATION\" --log \"$BASELOG\""
-perl "$ROOT/service/submitter.pl" --root "$ROOT" --destination "$DESTINATION" --log "$BASELOG"
+log "running perl \"$ROOT/service/submitter.pl\" --root \"$ROOT\" --destination \"$DESTINATION\" --log \"$BASELOG\" --report \"$REPORT\""
+perl "$ROOT/service/submitter.pl" --root "$ROOT" --destination "$DESTINATION" --log "$BASELOG" --report "$REPORT"
 log "finished"

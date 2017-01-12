@@ -22,11 +22,13 @@ INIT {
 my $root = 0;
 my $destination = 0;
 my $log = 0;
+my $report = 0;
 
 GetOptions(
     'root=s'        => \$root,
     'destination=s' => \$destination,
-    'log=s'         => \$log)
+    'log=s'         => \$log,
+    'report=s'      => \$report)
     or die "$0: can't load options: $!";
 
 if (!$root || !$destination) {
@@ -35,6 +37,20 @@ if (!$root || !$destination) {
     }
     die "$0: no configuration available, exiting";
 }
+
+my %error_types = (
+    'data'   => 'Data files',
+);
+my %errors = ();
+my $error_type;
+foreach $error_type (keys %error_types) {
+    $errors{$error_type} = ();
+}
+foreach $error_type (keys %error_types) {
+    push @{$errors{$error_type}}, 'foo';
+}
+
+#record_error('data', 'Sample error line');
 
 my $inbox   = "$root/inbox";
 my $todo    = "$root/todo";
@@ -66,6 +82,7 @@ foreach my $file (readdir $dh) {
         my $size = -s "$todo/$file";
         if ($size == 0) {
             debug("Not submitting 0-byte file $file");
+            record_error('data', "File $file is 0 bytes");
             rename("$todo/$file", "$failure/$file");
             next;
         }
@@ -102,12 +119,35 @@ foreach my $file (readdir $dh) {
             }
             else {
                 debug("Error, control file $destination/$control could not be created");
+                record_error('data', "Can't create control file $control");
                 rename("$todo/$file", "$failure/$file");
             }
         }
         else {
             debug("Error, pre- and post-transfer SHA256 checksums do not match");
+            record_error('data', "Checksum failure for $file");
             rename("$todo/$file", "$failure/$file");
+        }
+    }
+}
+
+# File report
+my $error_count = 0;
+foreach $error_type (keys %error_types) {
+    $error_count += scalar(@{$errors{$error_type}}) - 1;
+}
+
+if ($error_count > 0) {
+    foreach $error_type (keys %error_types) {
+        if (scalar(@{$errors{$error_type}}) > 1) {
+            shift @{$errors{$error_type}};
+            my $heading = $error_types{$error_type};
+            # Newline is deliberate
+            report("$heading\n");
+            foreach my $message (@{$errors{$error_type}}) {
+                report(" * $message");
+            }
+            report("\n");
         }
     }
 }
@@ -139,4 +179,24 @@ sub create_control_file {
     open (my $fh, '>', $target)
         or die "$0: can't open $target for truncation: $!";
     close($fh);
+}
+
+sub report {
+    my (
+        $message,
+    ) = @_;
+
+    open(my $report_fh, '>>', $report)
+        or die "$0: can't open $report for appending: $!";
+
+    say $report_fh $message;
+}
+
+sub record_error {
+    my (
+        $type,
+        $message,
+    ) = @_;
+
+    push @{$errors{$type}}, $message;
 }
